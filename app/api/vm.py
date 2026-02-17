@@ -48,9 +48,10 @@ def list_vms(
 
     return [
         {
+            "id": vm.id, 
             "host": vm.host,
             "is_busy": vm.is_busy,
-            "locked_by": vm.locked_by
+            "locked_by": vm.locked_by 
         }
         for vm in vms
     ]
