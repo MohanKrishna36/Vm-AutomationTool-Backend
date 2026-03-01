@@ -152,6 +152,9 @@ def run_command(
 class DisconnectRequest(BaseModel):
     host: str
 
+class DisconnectByIdRequest(BaseModel):
+    vm_id: int
+
 # 4️⃣ DISCONNECT VM
 @router.post("/disconnect")
 def disconnect_vm(
@@ -162,6 +165,30 @@ def disconnect_vm(
     vm = db.query(models.VirtualMachine).filter(
         models.VirtualMachine.host == data.host
     ).first()
+
+    if not vm:
+        raise HTTPException(status_code=404, detail="VM not found")
+
+    if vm.locked_by != current_user.id:
+        raise HTTPException(
+            status_code=403,
+            detail="You do not own this VM"
+        )
+
+    vm.is_busy = False
+    vm.locked_by = None
+    db.commit()
+
+    return {"message": "VM disconnected"}
+
+# 4️⃣🔧 DISCONNECT VM BY ID (fallback)
+@router.post("/disconnect/{vm_id}")
+def disconnect_vm_by_id(
+    vm_id: int,
+    current_user=Security(get_current_user),
+    db: Session = Depends(get_db)
+):
+    vm = db.query(models.VirtualMachine).get(vm_id)
 
     if not vm:
         raise HTTPException(status_code=404, detail="VM not found")
