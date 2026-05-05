@@ -22,7 +22,7 @@ def get_db():
 class CommandData(BaseModel):
     command: str
     timestamp: int
-    executionTime: int
+    executionTime: float   # float — dispatcher returns ms as float (e.g. 46.22)
     success: bool
 
 class ReportCreate(BaseModel):
@@ -69,14 +69,14 @@ def create_report(
 ):
     """Create a new session report"""
     
-    # Verify VM exists and user has access
+    # Verify VM exists — no locked_by check, VM may already be released by the
+    # time the report is submitted (disconnect → report is a common flow).
     vm = db.query(models.VirtualMachine).filter(
-        models.VirtualMachine.id == report.vm_id,
-        models.VirtualMachine.locked_by == current_user.id
+        models.VirtualMachine.id == report.vm_id
     ).first()
-    
+
     if not vm:
-        raise HTTPException(404, "VM not found or access denied")
+        raise HTTPException(404, "VM not found")
     
     # Check if report already exists for this session
     existing_report = db.query(models.SessionReport).filter(
