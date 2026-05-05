@@ -28,13 +28,49 @@ class HistoryEntry(BaseModel):
         from_attributes = True
 
 
+class HistorySave(BaseModel):
+    vm_id: int
+    vm_host: str
+    command: str
+    category: str = "raw"
+    action: str = "broadcast"
+    output: Optional[str] = None
+    error: Optional[str] = None
+    success: bool
+    execution_time_ms: Optional[float] = None
+
+
+@router.post("/save")
+def save_history_entry(
+    entry: HistorySave,
+    current_user=Security(get_current_user),
+    db: Session = Depends(get_db),
+):
+    row = models.CommandHistory(
+        user_id=current_user.id,
+        vm_id=entry.vm_id,
+        vm_host=entry.vm_host,
+        command=entry.command,
+        category=entry.category,
+        action=entry.action,
+        output=entry.output,
+        error=entry.error,
+        success=entry.success,
+        execution_time_ms=entry.execution_time_ms,
+        executed_at=datetime.utcnow(),
+    )
+    db.add(row)
+    db.commit()
+    return {"ok": True}
+
+
 @router.get("/", response_model=List[HistoryEntry])
 def get_history(
     vm_id: Optional[int] = Query(None),
     success: Optional[bool] = Query(None),
     search: Optional[str] = Query(None),
     category: Optional[str] = Query(None),
-    limit: int = Query(50, ge=1, le=200),
+    limit: int = Query(50, ge=1, le=1000),
     offset: int = Query(0, ge=0),
     current_user=Security(get_current_user),
     db: Session = Depends(get_db),

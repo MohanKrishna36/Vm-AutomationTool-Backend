@@ -345,23 +345,20 @@ def broadcast_command(
 
     # Persist every result to command_history so reports are accurate
     for r in results:
-        try:
-            row = models.CommandHistory(
-                user_id=current_user.id,
-                vm_id=r["vm_id"],
-                vm_host=r["host"],
-                command=req.command.strip(),
-                category="raw",
-                action="broadcast",
-                output=r.get("output") or "",
-                error=r.get("error") or "",
-                success=r["success"],
-                execution_time_ms=r.get("execution_time_ms"),
-                executed_at=datetime.utcnow(),
-            )
-            db.add(row)
-        except Exception:
-            pass
+        row = models.CommandHistory(
+            user_id=current_user.id,
+            vm_id=r["vm_id"],
+            vm_host=r["host"],
+            command=req.command.strip(),
+            category="raw",
+            action="broadcast",
+            output=r.get("output") or "",
+            error=r.get("error") or "",
+            success=r["success"],
+            execution_time_ms=r.get("execution_time_ms"),
+            executed_at=datetime.utcnow(),
+        )
+        db.add(row)
     db.commit()
 
     results.sort(key=lambda r: r["host"])
