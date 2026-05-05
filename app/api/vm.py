@@ -329,11 +329,40 @@ def broadcast_command(
             except Exception:
                 pass
 
+    import time as _time
+
+    def _exec_timed(vm):
+        t0 = _time.monotonic()
+        result = _exec(vm)
+        result["execution_time_ms"] = round((_time.monotonic() - t0) * 1000, 1)
+        return result
+
     results = []
     with ThreadPoolExecutor(max_workers=min(len(vms_to_run), 10)) as pool:
-        futures = {pool.submit(_exec, vm): vm for vm in vms_to_run}
+        futures = {pool.submit(_exec_timed, vm): vm for vm in vms_to_run}
         for future in as_completed(futures):
             results.append(future.result())
+
+    # Persist every result to command_history so reports are accurate
+    for r in results:
+        try:
+            row = models.CommandHistory(
+                user_id=current_user.id,
+                vm_id=r["vm_id"],
+                vm_host=r["host"],
+                command=req.command.strip(),
+                category="raw",
+                action="broadcast",
+                output=r.get("output") or "",
+                error=r.get("error") or "",
+                success=r["success"],
+                execution_time_ms=r.get("execution_time_ms"),
+                executed_at=datetime.utcnow(),
+            )
+            db.add(row)
+        except Exception:
+            pass
+    db.commit()
 
     results.sort(key=lambda r: r["host"])
 
